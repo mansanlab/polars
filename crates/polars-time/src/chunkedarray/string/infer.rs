@@ -151,12 +151,15 @@ impl StrpTimeParser<i64> for DatetimeInfer<Int64Type> {
             _ => unreachable!(), // time_unit has to be provided for datetime
         };
         unsafe {
-            self.transform_bytes
+            match self
+                .transform_bytes
                 .parse(val, self.latest_fmt.as_bytes(), self.fmt_len)
                 .map(transform)
-                .or_else(|| {
-                    // TODO! this will try all patterns.
-                    // somehow we must early escape if value is invalid
+            {
+                some @ Some(_) => some,
+                None if let Ok(val_str) = std::str::from_utf8(val)
+                    && self.pattern.is_inferable(val_str) =>
+                {
                     for fmt in self.patterns {
                         if self.fmt_len == 0 {
                             self.fmt_len = strptime::fmt_len(fmt.as_bytes())?;
@@ -171,7 +174,9 @@ impl StrpTimeParser<i64> for DatetimeInfer<Int64Type> {
                         }
                     }
                     None
-                })
+                },
+                None => None,
+            }
         }
     }
 }
@@ -183,12 +188,15 @@ impl StrpTimeParser<i32> for DatetimeInfer<Int32Type> {
             self.fmt_len = strptime::fmt_len(self.latest_fmt.as_bytes())?;
         }
         unsafe {
-            self.transform_bytes
+            match self
+                .transform_bytes
                 .parse(val, self.latest_fmt.as_bytes(), self.fmt_len)
                 .map(|ndt| naive_date_to_date(ndt.date()))
-                .or_else(|| {
-                    // TODO! this will try all patterns.
-                    // somehow we must early escape if value is invalid
+            {
+                some @ Some(_) => some,
+                None if let Ok(val_str) = std::str::from_utf8(val)
+                    && self.pattern.is_inferable(val_str) =>
+                {
                     for fmt in self.patterns {
                         if self.fmt_len == 0 {
                             self.fmt_len = strptime::fmt_len(fmt.as_bytes())?;
@@ -203,7 +211,9 @@ impl StrpTimeParser<i32> for DatetimeInfer<Int32Type> {
                         }
                     }
                     None
-                })
+                },
+                None => None,
+            }
         }
     }
 }
